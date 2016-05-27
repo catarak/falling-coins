@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Cryptocurrency Art</title>
+	<script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r75/three.min.js"></script>
+	<script src="scripts/STLLoader.js"></script>
+	<script src="scripts/OBJLoader.js"></script>
+	<script src="scripts/OrbitControls.js"></script>
+	<script src="scripts/cannon.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.3/jquery.min.js"></script>
+	<style>
+		html, body {
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      background:white;
+    }
+
+    .hide {
+			display: none;
+    }
+
+    .video-modal {
+    	position: absolute;
+	    top: 0;
+	    left: 0;
+	    right: 0;
+	    bottom: 0;
+	    background-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .video-modal-inner {
+    	display: flex;
+	    justify-content: center;
+	    align-items: center;
+	    height: 100%;
+	    width: 100%;
+	    flex-wrap: wrap;
+    }
+
+    .video-modal-input {
+    	font-size: 16px;
+    	width: 400px;
+    }
+
+    .video-modal-submit {
+    	font-size: 16px;
+    }
+
+    .video-modal-content {
+    	max-width: 800px;
+    }
+
+    .video-list {
+    	width: 100%;
+    	padding-left: 0;
+    }
+
+    .delete-video-button {
+    	font-family: sans-serif;
+    	text-align: center;
+    	cursor: pointer;
+    	display: inline-block;
+    }
+
+    .video-list-item {
+    	width: 100%;
+    	display: flex;
+    	justify-content: space-between;
+    	line-height: 1.8em;
+    }
+	</style>
+</head>
+<body>
+	<script>
+		var renderer;
+		var scene;
+		var camera;
+		var cameraTarget;
+		var cameraControl;
+
+		var videoCamera;
+
+		var NUM_COINS = 0;
+		var coins = new Array(NUM_COINS);
+		var coinMaterial;
+		var coinMesh;
+
+		//cannonjs stuff
+		var world;
+		var physicsCoins = new Array(NUM_COINS);
+
+		var time = new Date().getTime();
+		var dt;
+
+		var coinTime = 0;
+		var COIN_THRESHOLD = 0.5;
+
+		var flashTime = 0;
+		var modeToThreshold = [-1, 3, 2, 1, 0.5, 0.2];
+		var flashStay = 0;
+		var FLASH_STAY_THRESHOLD = 0.1;
+
+		//cylinder collider testing stuff
+		var cylinders = new Array(NUM_COINS);
+		var cylinderGeometry = new THREE.CylinderGeometry( 0.20, 0.20, 0.07, 64 );
+		var cylinderMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+		var cylinderMesh = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+
+		var renderWidth, renderHeight;
+
+		var mode = 0;
+
+		function init() {
+      initThree();
+     	initCannon();
+      render();
+		}
+
+		function initThree() {
+			var renderWidth = window.innerWidth;
+			var renderHeight = window.innerHeight;
+
+			scene = new THREE.Scene();
+
+			camera = new THREE.PerspectiveCamera( 35, renderWidth / renderHeight, 1, 1000 );
+			camera.position.set( 0, 0, 3 );
+			cameraTarget = new THREE.Vector3( 0, 0, 0 );
+			camera.lookAt(cameraTarget);
+
+			videoCamera = new THREE.PerspectiveCamera(35, renderWidth /renderHeight, 1, 1000);
+			videoCamera.position.set(200, 0, 3);
+
+			// cameraControl = new THREE.OrbitControls(camera);
+
+			renderer = new THREE.WebGLRenderer({antialias: true});
+      renderer.setClearColor(0x000000, 1.0);
+      renderer.setSize(renderWidth, renderHeight);
+      renderer.shadowMapEnabled = true;
+			
+			//it's GOLD
+			// coinMaterial = new THREE.MeshPhongMaterial( { color: 0xaa9944, specular:0xbbaa99, shininess:50, combine: THREE.MultiplyOperation } );
+			var silverMaterial = new THREE.MeshPhongMaterial( { color: 0xffffff, specular: 0xffffff, shininess:50, combine: THREE.MultiplyOperation } );
+      // var loader = new THREE.STLLoader();
+      var loader = new THREE.OBJLoader();
+      loader.load('./assets/NewCoin-5.obj', function(object) {
+      	coinMesh = object.children[0];
+      	coinMesh.material.setValues({ color: 0xffffff, specular:0xffffff, shininess: 50, combine: THREE.MultiplyOperation });
+      	for (var i = 0; i < coins.length; i++) {
+      		coins[i] = coinMesh.clone();
+      		var x = Math.random()*4 - 2.0;
+      		var y = Math.random()*6.2 - 1.2;
+      		var z = Math.random()*5 - 4;
+					// coins[i].position.set( x, y, z );
+					coins[i].rotation.set(Math.random()*2*Math.PI, Math.random()*2*Math.PI, Math.random()*2*Math.PI);
+					//coins[i].scale.set( 0.3, 0.3, 0.3 );
+					coins[i].castShadow = true;
+					coins[i].receiveShadow = true;
+					coins[i].rotationalVelocity = new THREE.Vector3(Math.random()*0.03,Math.random()*0.03,Math.random()*0.03);
+					scene.add( coins[i] );
+      	}
+      });
+
+      scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
+      addShadowedLight( 1, 1, 1, 0xffffff, 1.0 );
+			// addShadowedLight( 0.5, 1, -1, 0xffaa00, 1 );
+			addShadowedLight( 0.5, 1, -1, 0xffffff, 1 );
+
+			// var axisHelper = new THREE.AxisHelper( 5 );
+			// scene.add( axisHelper );
+
+			createWhiteScreen();
+
+      document.body.appendChild(renderer.domElement);
+
+		}
+
+		function initCannon() {
+			world = new CANNON.World();
+			// world.gravity.set(0, -9.82, 0);
+			world.gravity.set(0, -0.05, 0);
+			world.broadphase = new CANNON.NaiveBroadphase();
+			world.solver.iterations = 10;
+
+			for (var i = 0; i < physicsCoins.length; i++) {
+				// var shape = new CANNON.Cylinder(0.649, 0.649, 0.157, 100);
+				var shape = new CANNON.Cylinder(0.1947, 0.1947, 0.0471, 100);
+				var mass = 1;
+				var x = Math.random()*4 - 2.0;
+    		// var y = Math.random()*6.2 - 1.2;
+    		var y = 3;
+    		var z = Math.random()*5 - 4;
+				physicsCoins[i] = new CANNON.Body({
+					mass: 1,
+					position: new CANNON.Vec3(x,y,z)
+				});
+				physicsCoins[i].addShape(shape);
+				world.addBody(physicsCoins[i]);
+			}
+		}
+
+		function render() {
+			requestAnimationFrame(render);
+			var now = new Date().getTime();
+			dt = (now - time)/1000;
+			time = now;
+
+			coinTime += dt;
+			if (coinTime > COIN_THRESHOLD) {
+				addCoin();
+				coinTime = 0;
+			}
+
+			flashTime += dt;
+			var flash_threshold = modeToThreshold[mode];
+			if (flash_threshold === -1) {
+				renderer.render(scene, camera);
+			}
+			else if (flashTime > flash_threshold) {
+				renderer.render(scene, videoCamera);
+				flashStay += dt;
+				if (flashStay > FLASH_STAY_THRESHOLD) {
+					flashTime = 0;
+					flashStay = 0;
+				}
+			}
+			else {
+				renderer.render(scene, camera);
+			}
+
+			// renderer.render(scene, camera);
+			// renderer.render(scene, videoCamera);
+			//cameraControl.update();	
+			updatePhysics();
+		}
+
+		function updatePhysics() {
+			world.step(dt);
+
+			for (var i = 0; i < coins.length; i++) {
+				if (physicsCoins[i]) {
+					coins[i].position.copy(physicsCoins[i].position);
+					coins[i].quaternion.copy(physicsCoins[i].quaternion);
+
+					// cylinders[i].position.copy(physicsCoins[i].position);
+					// cylinders[i].quaternion.copy(physicsCoins[i].quaternion);
+				}
+			}
+		}
+
+		function addShadowedLight( x, y, z, color, intensity ) {
+			var directionalLight = new THREE.DirectionalLight( color, intensity );
+			directionalLight.position.set( x, y, z );
+			scene.add( directionalLight );
+			directionalLight.castShadow = true;
+			// directionalLight.shadowCameraVisible = true;
+			var d = 1;
+			directionalLight.shadowCameraLeft = -d;
+			directionalLight.shadowCameraRight = d;
+			directionalLight.shadowCameraTop = d;
+			directionalLight.shadowCameraBottom = -d;
+			directionalLight.shadowCameraNear = 1;
+			directionalLight.shadowCameraFar = 4;
+			directionalLight.shadowMapWidth = 1024;
+			directionalLight.shadowMapHeight = 1024;
+			directionalLight.shadowBias = -0.005;
+		}
+
+		function addCoin() {
+			var newCoin = coinMesh.clone();
+			newCoin.position.set( 0, 10, 0 );
+			newCoin.scale.set( 0.3, 0.3, 0.3 );
+			newCoin.castShadow = true;
+			newCoin.receiveShadow = true;
+			scene.add( newCoin );
+			coins.push(newCoin);
+
+			// var newCylinder = cylinderMesh.clone();
+			// newCylinder.castShadow = true;
+			// newCylinder.receiveShadow = true;
+			// scene.add( newCylinder );
+			// cylinders.push(newCylinder);
+
+			
+			// var shape = new CANNON.Cylinder(0.1947, 0.1947, 0.0471, 100);
+			var shape = new CANNON.Cylinder(0.20, 0.20, 0.07, 64);
+			var x = Math.random()*7 - 3.5;
+  		// var y = Math.random()*6.2 - 1.2;
+  		// var y = 3;
+  		var y = Math.random()*2.0 + 3.5;
+  		var z = Math.random()*5 - 7;
+			var body = new CANNON.Body({
+				mass: 1,
+				position: new CANNON.Vec3(x,y,z)
+			});
+			body.addShape(shape);
+			body.angularVelocity.set(Math.random()*1,Math.random()*1,Math.random()*1);
+			world.addBody(body);
+			physicsCoins.push(body);
+		}
+
+
+    function handleResize() {
+    	console.log("resizing");
+    		renderWidth = window.innerWidth;
+    		renderHeight = window.innerHeight;
+        camera.updateProjectionMatrix();
+        videoCamera.updateProjectionMatrix();
+        camera.aspect = renderWidth / renderHeight;
+  			videoCamera.aspect = renderWidth / renderHeight;
+        renderer.setSize(renderWidth, renderHeight);
+    }
+    window.onload = init;
+    window.addEventListener('resize', handleResize, false);
+
+		function createWhiteScreen() {
+			var material = new THREE.MeshBasicMaterial();
+			var geometry = new THREE.PlaneGeometry( 100, 100);
+			var mesh = new THREE.Mesh(geometry, material);
+			mesh.position.x = 200;
+			mesh.position.z = -10;
+			scene.add(mesh);
+		}
+
+		$(function() {
+			$(document).keydown(function(e) {
+					switch (e.keyCode) {
+						case 48: //0
+							mode = 0;
+							break;
+						case 49: //1
+							mode = 1;
+							break;
+						case 50: //2
+							mode = 2;
+							break;
+						case 51: //3
+							mode = 3;
+							break;
+						case 52: //4
+							mode = 4;
+							break;
+						case 53: //5
+							mode = 5;
+							break;
+						default:
+							break;
+					}
+			});
+		});
+
+	</script>
+</body>
+</html>
