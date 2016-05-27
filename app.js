@@ -12,8 +12,8 @@ app.get('/', function (req, res) {
   res.sendFile(path.join(__dirname + '/index.html'));
 });
 
-http.listen(8080, function() {
-	console.log('Listening on port 8080!');
+http.listen(4321, function() {
+	console.log('Listening on port 4321!');
 });
 
 io.on('connection', function(socket){
