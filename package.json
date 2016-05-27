@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/catarak/generative-blockchain-art#readme",
   "dependencies": {
-    "cannon": "^0.6.2"
+    "cannon": "^0.6.2",
+    "express": "^4.13.4",
+    "socketio": "^1.0.0"
   }
 }

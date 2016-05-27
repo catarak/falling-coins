@@ -4,6 +4,7 @@
 	<meta charset="UTF-8">
 	<title>Falling Coins</title>
 	<script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r75/three.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
 	<script src="scripts/STLLoader.js"></script>
 	<script src="scripts/OBJLoader.js"></script>
 	<script src="scripts/OrbitControls.js"></script>
@@ -98,7 +99,7 @@
 		var COIN_THRESHOLD = 0.5;
 
 		var flashTime = 0;
-		var modeToThreshold = [-1, 3, 2, 1, 0.5, 0.2];
+		var modeToThreshold = [-1, -2, 3, 2, 1, 0.5, 0.2, -3];
 		var flashStay = 0;
 		var FLASH_STAY_THRESHOLD = 0.1;
 
@@ -113,6 +114,11 @@
 		var mode = 0;
 
 		var timeStep=1/60;
+
+		var colorMesh;
+
+		var socket = io();
+		var eventToListenTo = 'change-mode';
 
 		function init() {
       initThree();
@@ -217,9 +223,18 @@
 			flashTime += dt;
 			var flash_threshold = modeToThreshold[mode];
 			if (flash_threshold === -1) {
+				colorMesh.material.color = new THREE.Color(0x000000);
+				renderer.render(scene, videoCamera);
+			}
+			else if (flash_threshold === -2) {
 				renderer.render(scene, camera);
 			}
+			else if (flash_threshold === -3) {
+				colorMesh.material.color = new THREE.Color(0xffffff);
+				renderer.render(scene, videoCamera);
+			}
 			else if (flashTime > flash_threshold) {
+				colorMesh.material.color = new THREE.Color(0xffffff);
 				renderer.render(scene, videoCamera);
 				flashStay += dt;
 				if (flashStay > FLASH_STAY_THRESHOLD) {
@@ -230,7 +245,6 @@
 			else {
 				renderer.render(scene, camera);
 			}
-
 			// renderer.render(scene, camera);
 			// renderer.render(scene, videoCamera);
 			//cameraControl.update();	
@@ -320,37 +334,55 @@
 		function createWhiteScreen() {
 			var material = new THREE.MeshBasicMaterial();
 			var geometry = new THREE.PlaneGeometry( 100, 100);
-			var mesh = new THREE.Mesh(geometry, material);
-			mesh.position.x = 200;
-			mesh.position.z = -10;
-			scene.add(mesh);
+			colorMesh = new THREE.Mesh(geometry, material);
+			colorMesh.position.x = 200;
+			colorMesh.position.z = -10;
+			scene.add(colorMesh);
 		}
 
 		$(function() {
 			$(document).keydown(function(e) {
 					switch (e.keyCode) {
-						case 48: //0
-							mode = 0;
-							break;
 						case 49: //1
-							mode = 1;
+							mode = 0;
+							socket.emit('change-mode', {mode: mode});
 							break;
 						case 50: //2
-							mode = 2;
+							mode = 1;
+							socket.emit('change-mode', {mode: mode});
 							break;
 						case 51: //3
-							mode = 3;
+							mode = 2;
+							socket.emit('change-mode', {mode: mode});
 							break;
 						case 52: //4
-							mode = 4;
+							mode = 3;
+							socket.emit('change-mode', {mode: mode});
 							break;
 						case 53: //5
+							mode = 4;
+							socket.emit('change-mode', {mode: mode});
+							break;
+						case 54: //6
 							mode = 5;
+							socket.emit('change-mode', {mode: mode});
+							break;
+						case 55: //7
+							mode = 6;
+							socket.emit('change-mode', {mode: mode});
+							break;
+						case 56: //8
+							mode = 7;
+							socket.emit('change-mode', {mode: mode});
 							break;
 						default:
 							break;
 					}
 			});
+		});
+
+		socket.on(eventToListenTo, function(data) {
+			mode = data.mode;
 		});
 
 	</script>
