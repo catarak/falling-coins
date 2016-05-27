@@ -22,7 +22,7 @@
   "homepage": "https://github.com/catarak/generative-blockchain-art#readme",
   "dependencies": {
     "cannon": "^0.6.2",
-    "express": "^4.13.4"g,
+    "express": "^4.13.4",
     "socket.io": "^1.4.6"
   }
 }
