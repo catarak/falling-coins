@@ -112,6 +112,8 @@
 
 		var mode = 0;
 
+		var timeStep=1/60;
+
 		function init() {
       initThree();
      	initCannon();
@@ -236,7 +238,8 @@
 		}
 
 		function updatePhysics() {
-			world.step(dt);
+			// world.step(dt);
+			world.step(timeStep);
 
 			for (var i = 0; i < coins.length; i++) {
 				if (physicsCoins[i]) {
